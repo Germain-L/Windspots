@@ -33,6 +33,7 @@ func main() {
 	r := pat.New()
 	r.Get("/spots", http.HandlerFunc(getAllSpots))
 	r.Post("/spot", http.HandlerFunc(insertSpot))
+	r.Get("/spot/:name", http.HandlerFunc(getSpotByName))
 
 	http.Handle("/", r)
 	log.Print("Running on 8080")
@@ -70,6 +71,27 @@ func insertSpot(w http.ResponseWriter, r *http.Request) {
 	checkErr(err)
 
 	w.WriteHeader(http.StatusCreated)
+}
+
+func getSpotByName(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get(":name")
+
+	stmt, err := mainDb.Prepare("SELECT * FROM spots where name LIKE ?")
+	checkErr(err)
+
+	rows, errQuery := stmt.Query(name)
+	checkErr(errQuery)
+
+	var selectedSpot Spot
+
+	for rows.Next() {
+		err = rows.Scan(&selectedSpot.UID, &selectedSpot.Name, &selectedSpot.Lat, &selectedSpot.Lon)
+		checkErr(err)
+	}
+
+	jsonB, errMarshal := json.Marshal(selectedSpot)
+	checkErr(errMarshal)
+	fmt.Fprintf(w, "%s", string(jsonB))
 }
 
 func checkErr(err error) {
